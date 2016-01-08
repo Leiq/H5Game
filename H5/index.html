@@ -1,0 +1,524 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title></title>
+    <style>
+        div {
+            width: auto;
+            height: auto;
+            float: left;
+        }
+
+        #main {
+            background-color: lightgray;
+            width: 400px;
+            height: 600px;
+            border: 2px solid gray;
+            margin-left: 200px;
+        }
+
+        #res {
+            border: 1px solid red;
+        }
+
+        #log {
+            border: 2px solid gray;
+            width: 400px;
+            height: 500px;
+            overflow: auto;
+        }
+
+        img {
+            float: left;
+        }
+    </style>
+    <script src="js/jquery-1.8.0.js"></script>
+    <script>
+        var ctx, mainId, herofireId, enemyfireId, bg, hero, enemys = [], herobullets = [], enemybullets = [];
+        window.onload = function () {
+            ctx = main.getContext('2d');
+            main.width = backgroundImg.width;
+            main.height = backgroundImg.height / 2;
+            $('#res,#stop,#bgsound').hide();
+            $('#start').click(function () {
+                Game.Start();
+                $('#start').hide();
+                $('#stop').show();
+            });
+            $('#stop').click(function () {
+                if (mainId) {
+                    $('#start').show();
+                    $('#stop').hide();
+                    clearInterval(mainId);
+                }
+                if (herofireId) {
+                    clearInterval(herofireId);
+                }
+
+                if (enemyfireId) {
+                    clearInterval(enemyfireId);
+                }
+            });
+            Game.Start();
+        }
+
+        function logMsg(msg, clear) {
+            msg = new Date().toLocaleTimeString() + ": " + msg + "<br/>";
+            if (clear) {
+                log.innerHTML = msg;
+            } else {
+                log.innerHTML += msg;
+                log.scrollTop = log.scrollHeight;
+            }
+        }
+
+        function inArray(v, arr) {
+            for (var i = 0; i < arr.length; i++) {
+                if (arr[i] == v) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        function RemoveGameObject(obj) {
+            var e = inArray(obj, enemys);
+            if (e > -1) {
+                enemys.splice(e, 1);
+                //delete enemys[e];//仅仅将 value 设为undefined 长度并没有改变
+            } else {
+                e = inArray(obj, herobullets);
+                if (e > -1) {
+                    herobullets.splice(e, 1);
+                    //delete herobullets[e]
+                } else {
+                    e = inArray(obj, enemybullets);
+                    if (e > -1) {
+                        enemybullets.splice(e, 1);
+                        //delete enemybullets[e]
+                    } else {
+
+                    }
+                }
+            }
+        }
+
+        var Game = {
+            Start: function () {
+                Game.InitGame(50);
+                logMsg('game start...');
+            },
+            Over: function () {
+                $('#stop').click();
+                logMsg('game over !!');
+            },
+            //speed:{bg:3,enemy:5,6,7}
+            //life: {hero:100,enemy:50,100,150}
+            //power:{hero:100,enemy:50,100,150}
+            InitGame: function (timeout) {
+                timeout = timeout || 50;
+                bg = new Game.Background(3);
+                hero = new Game.Hero(main.width, 100);
+
+                document.onkeydown = function (e) {
+                    var keyPower = 30;
+                    if (e.keyCode == 37) {//左
+                        hero.x -= keyPower;
+                    }
+                    else if (e.keyCode == 39) {//右       fun_c();
+                        hero.x += keyPower;
+                    }
+                    else if (e.keyCode == 38) {//上      fun_b();
+                        hero.y -= keyPower;
+                    }
+                    else if (e.keyCode == 40) {//下       fun_d();
+                        hero.y += keyPower;
+                    }
+                }
+
+                //hero随鼠标移动
+                main.onmousemove = function (e) {
+                    hero.x = Math.floor(e.offsetX);
+                    hero.y = Math.floor(e.offsetY);
+                }
+                //发射子弹
+                main.onclick = function () {
+                    hero.fire();
+                }
+                var paint = this.Paint;
+                paint();
+                Game.BgSound(0);
+                mainId = setInterval(function () {
+                    try {
+                        paint();
+                        //logMsg(enemys.length);
+                        if (enemys.length < 1) {
+                            initEnemys();
+                        }
+                    } catch (e) {
+                        logMsg(e);
+                    }
+                }, timeout);
+                herofireId = setInterval(function () {
+                    hero.fire();
+                }, 300);
+                enemyfireId = setInterval(function () {
+                    for (var i = 0; i < enemys.length; i++) {
+                        if (enemys[i]) {
+                            if (Math.random() * 10 >= 6) {
+                                enemys[i].fire();
+                            }
+                        }
+                    }
+                }, 1000);
+                function initEnemys() {
+                    var r = Math.floor(Math.random() * 100);
+                    var speed = 5, life = 50, power = 50;
+                    for (var i = 0; i < 3; i++) {
+                        var e1 = new Game.Enemy(Math.random() * main.width,
+                            -Math.random() * 100, 0, speed, life);
+                        enemys.push(e1);
+                    }
+                    for (var i = 0; i < 2; i++) {
+                        var e2 = new Game.Enemy(Math.random() * main.width,
+                            -Math.random() * 100, 1, speed + 2, life * 2);
+                        enemys.push(e2);
+                    }
+                    if (r > 50 && r <= 100) {
+                        var e3 = new Game.Enemy(Math.random() * main.width,
+                            -Math.random() * 100, 2, speed + 4, life * 3);
+                        enemys.push(e3);
+                    }
+                    //enemys.push();
+                }
+
+                logMsg('init...');
+            },
+            Paint: function () {
+                ctx.clearRect(0, 0, main.width, main.height)
+                bg.draw();
+                hero.draw();
+                for (var i = 0; i < enemys.length; i++) {
+                    if (enemys[i]) {
+                        enemys[i].draw();
+                        //enemys[i].fire();
+                    }
+                }
+                for (var i = 0; i < herobullets.length; i++) {
+                    if (herobullets[i]) {
+                        herobullets[i].draw();
+                    }
+                }
+                for (var i = 0; i < enemybullets.length; i++) {
+                    if (enemybullets[i]) {
+                        enemybullets[i].draw();
+                    }
+                }
+                Game.Hit();
+            },
+
+            //碰撞检测
+            Hit: function () {
+                //玩家子弹击中敌机
+                for (var i = 0; i < herobullets.length; i++) {
+                    herobullets[i].hit();
+                }
+
+                //敌机子弹击中玩家
+                for (var i = 0; i < enemybullets.length; i++) {
+                    enemybullets[i].hit();
+                }
+
+                //敌机撞击玩家
+                for (var i = 0; i < enemys.length; i++) {
+                    enemys[i].hit();
+                }
+
+            },
+            //血量绘制 faft//8 0 037709436052 123456
+            Blood: function (len) {
+                var t = len / main.width;
+                if (len / main.width <= 0.5) {
+                    ctx.fillStyle = "red";
+                } else {
+                    ctx.fillStyle = "green";
+                }
+                len = len <= 0 ? 0 : len;
+                ctx.fillRect(0, 0, len, 10);
+                ctx.fillStyle = "white";
+                ctx.fillRect(len, 0, main.width - len, 10);
+            },
+
+            BgSound: function (index) {
+                bgsound.src = bgsound.children.item(index).src;
+                bgsound.load();
+                bgsound.play()
+            },
+            HeroSound: function (index) {
+                herosound.src = herosound.children.item(index).src;
+                herosound.load();
+                herosound.play();
+            },
+            EnemySound: function (index) {
+                enemysound.src = enemysound.children.item(index).src;
+                enemysound.load();
+                enemysound.play();
+            },
+            GameObject: function (img, x, y, w, h, speed, duration/*up,down,left,right*/, life) {
+                this.img = img;
+                this.x = x || 0;
+                this.y = y || 0;
+                this.width = w || 0;
+                this.height = h || 0;
+                this.speed = speed || 0;
+                this.duration = duration || "down";
+                this.life = life || 0;
+
+                this.draw = function () {
+                    this.move();
+                    ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+                }
+                this.move = function () {
+                    switch (this.duration) {
+                        case "up":
+                            this.y -= this.speed;
+                            break;
+                        case "down":
+                            this.y += this.speed;
+                            break;
+                        case "left":
+                            this.x -= this.speed;
+                            break;
+                        case "right":
+                            this.x += this.speed;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            },
+            Background: function (s) {
+                Game.GameObject.call(this, backgroundImg, 0, main.height - backgroundImg.height,
+                backgroundImg.width, backgroundImg.height, s, 'down');
+                this.move = function () {
+                    this.y += this.speed;
+                    if (this.y >= 0) {
+                        this.y = main.height - this.img.height;
+                    }
+                }
+                this.draw = function () {
+                    this.move();
+                    ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+                    //100/life = x/400
+                    Game.Blood(hero.life);
+                }
+            },
+            Hero: function (life, power) {
+                Game.GameObject.call(this, hero1Img, main.width / 2 - hero1Img.width / 2, main.height - hero1Img.height,
+                hero1Img.width, hero1Img.height, 0, null, life);
+                //控制飞机不可以出画板的范围
+                this.move = function () {
+                    this.x = this.x <= -this.width / 2 ? -this.width / 2 : (this.x >= main.width - this.width / 2 ? main.width - this.width / 2 : this.x);
+                    this.y = this.y <= 0 ? 0 : (this.y >= main.height - this.height ? main.height - this.height : this.y);
+                }
+
+                this.power = power || 1;
+                this.fire = function () {
+                    herobullets.push(new Game.HeroBullet(100));
+                    Game.HeroSound(0);
+                }
+                this.isOver = function () {
+                    if (this.life <= 0) {
+                        var booms = [hero1_down1Img, hero1_down2Img, hero1_down3Img, hero1_down4Img];
+                        for (var i = 0; i < booms.length; i++) {
+                            ctx.drawImage(booms[i], this.x, this.y);
+                        }
+                        Game.BgSound(1);
+                        Game.Over();
+                    }
+                }
+            },
+            Enemy: function (x, y, size/*0,1,2*/, speed, life) {
+                this.size = size || 0;
+                var img = getImg(size);
+                Game.GameObject.call(this, img, x, y, img.width, img.height, speed, 'down', life);
+
+                function getImg(size) {
+                    if (size == 1) {
+                        return enemy2Img;
+                    } else if (size == 2) {
+                        return enemy3Img;
+                    } else {
+                        return enemy1Img;
+                    }
+                }
+                this.move = function () {
+                    this.y += this.speed;
+                    this.x = this.x <= 0 ? 0 : (this.x >= main.width - this.width ? main.width - this.width : this.x);
+                    if (this.y >= main.height) {
+                        RemoveGameObject(this);
+                    }
+                }
+                this.fire = function () {
+                    enemybullets.push(new Game.EnemyBullet(this, 100));
+                    Game.EnemySound(0);
+                }
+                this.hit = function () {
+                    if (Game.IntersectsWith(this, hero)) {
+                        //飞机相撞 life抵消
+                        var t = this.life;
+                        this.life -= hero.life;
+                        hero.life -= t;
+                        this.isOver();
+                        hero.isOver();
+                        Game.HeroSound(1);
+                        Game.EnemySound(1);
+                    }
+                }
+                this.isOver = function () {
+                    if (this.life <= 0) {
+                        //爆炸效果
+                        var boomArr = this.getBoom();
+                        for (var i = 0; i < boomArr.length; i++) {
+                            ctx.drawImage(boomArr[i], this.x, this.y, boomArr[i].width, boomArr[i].height);
+                        }
+                        RemoveGameObject(this);
+                    }
+                }
+
+                this.getBoom = function () {
+                    if (this.size == 1) {
+                        return [enemy2_down1Img, enemy2_down2Img, enemy2_down3Img, enemy2_down4Img];
+                    } else if (this.size == 2) {
+                        return [enemy3_down1Img, enemy3_down2Img, enemy3_down3Img, enemy3_down4Img];
+                    } else {
+                        return [enemy1_down1Img, enemy1_down2Img, enemy1_down3Img, enemy1_down4Img];
+
+                    }
+                }
+            },
+            HeroBullet: function (power) {
+                this.power = power;//子弹力量
+                Game.GameObject.call(this, bullet2Img,
+                    hero.x + hero.width / 2, hero.y + bullet2Img.height,
+                    bullet2Img.width, bullet2Img.height,
+                    20, 'up');
+                this.move = function () {
+                    this.y -= this.speed;
+                    if (this.y <= 0) {
+                        RemoveGameObject(this);
+                    }
+                }
+
+                //击中目标（敌机）
+                this.hit = function () {
+                    for (var i = 0; i < enemys.length; i++) {
+                        if (Game.IntersectsWith(this, enemys[i])) {
+                            enemys[i].life -= this.power;
+                            RemoveGameObject(this);
+                            Game.EnemySound(1);
+                            enemys[i].isOver();
+                        }
+                    }
+                }
+            },
+
+            EnemyBullet: function (enemy, power) {
+                this.enemy = enemy;
+                this.power = power;
+                Game.GameObject.call(this, bullet1Img,
+                    enemy.x + enemy.width / 2, enemy.y + enemy.height - bullet1Img.height,
+                    bullet1Img.width, bullet1Img.height,
+                    enemy.speed + 20, 'down');
+
+                this.move = function () {
+                    this.y += this.speed;
+                    if (this.y >= main.height) {
+                        RemoveGameObject(this);
+                    }
+                }
+
+                //击中目标（敌机）
+                this.hit = function () {
+                    if (Game.IntersectsWith(this, hero)) {
+                        hero.life -= this.power;
+                        RemoveGameObject(this);
+                        Game.HeroSound(1);
+                        hero.isOver();
+                    }
+                }
+            },
+
+            //比较两个矩形是否有重叠
+            IntersectsWith: function (obj1, obj2) {
+                //给定两个矩形A和B:
+                //  矩形A的左上角坐标为（Xa1, Ya1），右下角坐标为（Xa2, Ya2），
+                //  矩形B的左上角坐标为（Xb1, Yb1），右下角坐标为（Xb2, Yb2）。
+                //矩形A的宽 Wa = Xa2-Xa1 高 Ha = Ya2-Ya1
+                //矩形B的宽 Wb = Xb2-Xb1 高 Hb = Yb2-Yb1
+                //矩形A的中心坐标 (Xa3,Ya3) = （ (Xa2+Xa1)/2 ，(Ya2+Ya1)/2 ）
+                //矩形B的中心坐标 (Xb3,Yb3) = （ (Xb2+Xb1)/2 ，(Yb2+Yb1)/2 ）
+                //所以只要同时满足下面两个式子，就可以说明两个矩形相交。
+                //1） | Xb3-Xa3 | <= Wa/2 + Wb/2
+                //2） | Yb3-Ya3 | <= Ha/2 + Hb/2
+                //即：
+                //        | Xb2+Xb1-Xa2-Xa1 | <= Xa2-Xa1 + Xb2-Xb1
+                //        | Yb2+Yb1-Ya2-Ya1 | <=Ya2-Ya1 + Yb2-Yb1
+                return (Math.abs(obj2.x - obj1.x) <= (obj1.width + obj2.width) / 2
+                    && Math.abs(obj2.y - obj1.y) <= (obj1.height + obj2.height) / 2);
+            }
+        };
+
+    </script>
+</head>
+<body>
+    <div>
+        <div>
+            <canvas id="main"></canvas>
+        </div>
+        <div>
+            <input type="button" id="start" value="Start" />
+            <input type="button" id="stop" value="Stop" />
+        </div>
+        <div id="log"></div>
+        <div id="res">
+            <audio id="bgsound" controls="controls">
+                <source src="resource/sound/game_music.wav" />
+                <source src="resource/sound/game_over.wav" />
+            </audio>
+            <audio id="herosound" controls="controls">
+                <source src="resource/sound/bullet.wav" />
+                <source src="resource/sound/use_bomb.wav" />
+            </audio>
+            <audio id="enemysound" controls="controls">
+                <source src="resource/sound/bullet.wav" />
+                <source src="resource/sound/use_bomb.wav" />
+            </audio>
+            <img style="display:none;" id="backgroundImg" src="resource/background.png" />
+            <img id="hero1Img" src="resource/hero1.png" />
+            <img id="hero1_down1Img" src="resource/hero_blowup_n1.png" />
+            <img id="hero1_down2Img" src="resource/hero_blowup_n2.png" />
+            <img id="hero1_down3Img" src="resource/hero_blowup_n3.png" />
+            <img id="hero1_down4Img" src="resource/hero_blowup_n4.png" />
+            <img id="bullet1Img" src="resource/bullet1.png" />
+            <img id="bullet2Img" src="resource/bullet2.png" />
+            <img id="enemy1Img" src="resource/enemy1.png" />
+            <img id="enemy2Img" src="resource/enemy2.png" />
+            <img id="enemy3Img" src="resource/enemy3.png" />
+            <img id="enemy1_down1Img" src="resource/enemy1_down1.png" />
+            <img id="enemy1_down2Img" src="resource/enemy1_down2.png" />
+            <img id="enemy1_down3Img" src="resource/enemy1_down3.png" />
+            <img id="enemy1_down4Img" src="resource/enemy1_down4.png" />
+            <img id="enemy2_down1Img" src="resource/enemy2_down1.png" />
+            <img id="enemy2_down2Img" src="resource/enemy2_down2.png" />
+            <img id="enemy2_down3Img" src="resource/enemy2_down3.png" />
+            <img id="enemy2_down4Img" src="resource/enemy2_down4.png" />
+            <img id="enemy3_down1Img" src="resource/enemy3_down1.png" />
+            <img id="enemy3_down2Img" src="resource/enemy3_down2.png" />
+            <img id="enemy3_down3Img" src="resource/enemy3_down3.png" />
+            <img id="enemy3_down4Img" src="resource/enemy3_down4.png" />
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,305 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="js/jquery-1.8.0.js"></script>
+    <script src="js/three.min.js"></script>
+    <style>
+        body, div {
+            margin: 0px;
+            padding: 0px;
+            text-align: center;
+            float: left;
+        }
+
+        #sce {
+            float: left;
+            border: 2px solid black;
+            width: 400px;
+            height: 300px;
+            margin: 10px auto;
+            box-shadow: 0px 0px 10px black;
+            -webkit-box-shadow: 0px 0px 10px black;
+            -moz-box-shadow: 0px 0px 10px black;
+            background-color: blue;
+        }
+
+        .bar {
+            width: 0;
+            height: 10px;
+            background-color: green;
+            text-align: left;
+        }
+
+        .border {
+            border: 2px solid blue;
+            width: auto;
+            margin: 5px;
+            padding: 10px;
+            float: left;
+        }
+    </style>
+    <script>
+
+        var Glass = {
+            bind: function (imgId, zRat) {
+                var self = this;
+                this.canvas = document.createElement('canvas');
+                this.canvas.style.display = "none";
+                this.canvas.style.position = "absolute";
+                this.ctx = this.canvas.getContext('2d');
+                this.canvas.width = this.canvas.height = 100;
+                this.hEle = document.getElementById(imgId);
+                this.zRat = zRat | 2;
+                document.body.appendChild(this.canvas);
+                document.body.onmousedown = function (e) {
+                    if (e.srcElement.id == imgId) {
+                        e.preventDefault();
+                        draw(e);
+                        function draw(e) {
+                            var x = e.pageX, y = e.pageY;
+                            var exOff = x - self.hEle.offsetLeft;
+                            var eyOff = y - self.hEle.offsetTop;
+                            var rLen = 50 / self.zRat;
+                            self.copyImg(exOff - rLen, eyOff - rLen, rLen * 2, rLen * 2);
+                            self.show(x - 50, y - 50);
+                        }
+                        document.body.onmousemove = draw;
+                        document.body.onmouseup = function () {
+                            self.hide();
+                            document.body.onmousemove = null;
+                        };
+                    }
+                }
+
+            },
+            copyImg: function (x, y, w, h) {
+                this.ctx.arc(50, 50, 50, 0, Math.PI * 2, true);
+                this.ctx.clip();
+                this.ctx.drawImage(this.hEle, x, y, w, h, 0, 0, 100, 100);
+            },
+            show: function (x, y) {
+                this.canvas.style.display = "block";
+                this.canvas.style.pixelLeft = x;
+                this.canvas.style.pixelTop = y;
+            },
+            hide: function () {
+                this.canvas.style.display = "none";
+            }
+        }
+
+        var scene, cam, render, cube, light, preE;
+        $(function () {
+            scene = new THREE.Scene();
+            cam = new THREE.PerspectiveCamera(30, 1, 0.1, 2000);
+            cam.position.x = cam.position.y = cam.position.z = 2;
+            cam.lookAt(new THREE.Vector3(0, 0, 0));
+            render = new THREE.WebGLRenderer({ antialias: true });
+            render.setSize($('#sce').width(), $('#sce').height());
+            $('#sce').append(render.domElement).mousemove(function (e) {
+                if (preE) {
+                    cube.rotation.y -= Math.PI / 180 * (preE.pageX - e.pageX);
+                    cube.rotation.x -= Math.PI / 180 * (preE.pageY - e.pageY);
+                }
+                preE = e;
+                render.render(scene, cam);
+            });
+
+            var text = THREE.ImageUtils.loadTexture('img/mf.jpg');
+            text.anisotropy = render.getMaxAnisotropy();
+            var g = new THREE.CubeGeometry(1, 1, 1);
+            var m = new THREE.MeshBasicMaterial({ map: text });
+            cube = new THREE.Mesh(g, m);
+            scene.add(cube);
+            render.render(scene, cam);
+            animate();
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            cube.rotation.y += Math.PI / 320;
+            render.render(scene, cam);
+        }
+
+        var bar, id;
+        function go() {
+            if (!bar) {
+                bar = $('.bar');
+            }
+            window.requestAnimationFrame(go);
+            //clearInterval(id);
+            if (bar.width() <= 500) {
+                bar.width(bar.width() + 5);
+                bar.html(bar.width() / 5 + '%');
+            } else {
+                //bar.width(0).html('');
+            }
+        }
+
+        function GetAddress() {
+            navigator.geolocation.getCurrentPosition(function (p) {
+                $('#zb').html(p.coords.longitude + "," + e.coords.latitude);
+            }, function (code) {
+                $('#zb').html(["拒绝服务", "获取不到地理信息", "超时"][code]);
+            });
+
+        }
+
+        function DoStorage(save) {
+            if (save) {
+                localStorage.setItem('user', $('#user').val());
+                localStorage.setItem('pwd', $('#pwd').val());
+            } else {
+                $('#user').val(localStorage.getItem('user'))
+                $('#pwd').val(localStorage.getItem('pwd'))
+            }
+        }
+
+        function WorkerTest(act) {
+            var a = 0, n = 80000000;
+            if (act) {
+                var wk = new Worker('js/WorkerTest.js');
+                wk.onmessage = function (e) {
+                    alert(e.data);
+                }
+                wk.postMessage(n);
+            } else {
+                for (var i = 0; i < n; i++) {
+                    a = a + 4 * Math.pow(-1, i) / (2 * i + 1);
+                }
+                alert(a);
+            }
+        }
+
+        function ConvertPic(oper) {
+            switch (oper) {
+                case "gray":
+                    cff.width = ff.width;
+                    cff.height = ff.height;
+                    var ctx = cff.getContext("2d");
+                    ctx.drawImage(ff, 0, 0, ff.width, ff.height);
+                    var imgData = ctx.getImageData(0, 0, cff.width, cff.height);
+                    for (var i = 0; i < imgData.data.length; i += 4) {
+                        var r = imgData.data[i],
+                            g = imgData.data[i + 1],
+                            b = imgData.data[i + 2];
+                        //计算灰度值公式：Gray=(R*30+G*59+B*11+50)/100
+                        var gray = (r * 30 + g * 59 + b * 11 + 50) / 100;
+                        imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = gray;
+                    }
+                    ctx.putImageData(imgData, 0, 0);
+                    break;
+                case "scale":
+                    //ctx.scale(0.5, 0.5);
+                    cff.width = ff.width;
+                    cff.height = ff.height;
+                    var ctx = cff.getContext("2d");
+                    ctx.drawImage(ff, 0, 0, ff.width / 2, ff.height / 2);
+                    break;
+                case "translate":
+                    break;
+                case "glass":
+                    try {
+                        Glass.bind('ff');
+                    } catch (e) {
+                        alert(e);
+                    }
+                    break;
+                case "move":
+                    ff.src = "img/bird.jpg";
+                    var ctx = cff.getContext("2d");
+                    var index = 0, frames = [];
+                    var w = 140, h = 85;
+                    cff.width = w * 2;
+                    cff.height = h * 2;
+                    for (var i = 0; i < 2; i++) {
+                        for (var j = 0; j < 4; j++) {
+                            frames.push([j * w, i * h]);//[w * i, h * j]
+                        }
+                    }
+                    draw();
+                    setInterval(function () {
+                        draw();
+                    }, 200);
+                    function draw() {
+                        ctx.clearRect(0, 0, cff.width, cff.height);
+                        ctx.drawImage(ff, frames[index][0], frames[index][1], w, h, 0, 0, w, h);
+                        logMsg(index + ',' + frames[index]);
+                        index++;
+                        if (index >= frames.length) {
+                            index = 0;
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        function logMsg(msg, append) {
+            if (append) {
+                $('#log').append(new Date().toLocaleTimeString() + ': ' + msg + '<br/>');
+            } else {
+                $('#log').html(new Date().toLocaleTimeString() + ': ' + msg + '<br/>');
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="log" style="width:100%; height:50px; padding:5px 100px; text-align:left;"></div>
+    <div class="bar "><input type="button" onclick="go()" value="Go" /></div>
+    <div class="border" style="clear:both;">
+        <audio controls="controls">
+            <source src="img/%e9%9b%a8%e7%9a%84%e5%8d%b0%e8%ae%b0.mp3" type="audio/mpeg" />
+        </audio>
+    </div>
+    <div class="border">
+        <h3 style="cursor:pointer;" onclick="GetAddress()">地理信息:<span id="zb"></span></h3>
+    </div>
+
+    <div class="border">
+        <h5>localStorage</h5>
+        <table cellpadding="3" cellspacing="3">
+            <tr>
+                <td>user</td>
+                <td><input type="text" id="user" value="" /></td>
+            </tr>
+            <tr>
+                <td>pwd</td>
+                <td><input type="text" id="pwd" value="" /></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <input type="button" onclick="DoStorage(true)" value="Save" />
+                    <input type="button" onclick="DoStorage(false)" value="Get" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="border">
+        <h5>worker</h5>
+        <input type="button" onclick="WorkerTest(false)" value="传统单线程">
+        <input type="button" onclick="WorkerTest(true)" value="Worker多线程">
+    </div>
+    <div id="sce" style="clear:both;">
+    </div>
+    <div class="border">
+        <div style="width:auto; float:left;">
+            <img id="ff" src="img/girl.jpg" />
+        </div>
+        <div style="width:auto; float:left;">
+            <h5>图片灰度转换</h5>
+            <input type="button" onclick="ConvertPic('gray')" value="转换" /><br /><br />
+            <input type="button" onclick="ConvertPic('scale')" value="缩放" /><br /><br />
+            <input type="button" onclick="ConvertPic('glass')" value="放大镜" /><br /><br />
+            <input type="button" onclick="ConvertPic('move')" value="动画" />
+        </div>
+        <div style="width:auto; float:left;">
+            <canvas id="cff" style=" border: 1px solid red;"></canvas>
+        </div>
+    </div>
+</body>
+</html>
